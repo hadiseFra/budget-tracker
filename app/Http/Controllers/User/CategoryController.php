@@ -126,8 +126,7 @@ class CategoryController extends Controller
         }
 
         try {
-            $category = Category::query()
-                ->update($request->validated());
+            $category->update($request->validated());
         } catch (Throwable $exception) {
             return response()->json([
                 'data' => [],
