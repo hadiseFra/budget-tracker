@@ -7,9 +7,11 @@ use App\Http\Requests\Category\User\Index as IndexRequest;
 use App\Http\Requests\Category\User\Search as SearchRequest;
 use App\Http\Requests\Category\User\Store as StoreRequest;
 use App\Http\Requests\Category\User\Update as UpdateRequest;
+use App\Http\Resources\User\Category\CategoryResource;
 use App\Models\Category;
 use App\Models\User;
 use Illuminate\Http\Response;
+use App\Http\Responses\Response as CustomResponse;
 use Throwable;
 
 class CategoryController extends Controller
@@ -19,27 +21,15 @@ class CategoryController extends Controller
      *
      * @param User $user
      * @param IndexRequest $request
-     * @return Response
+     * @return CustomResponse
      */
     public function index(User $user, IndexRequest $request)
     {
-        $categories = Category::query()
-            ->where('user_id', '=', $user->id)
-            ->orderBy('created_at')
+        $categories = $user->categories()
+            ->orderBy('created_at', 'desc')
             ->paginate(20);
 
-        if ($categories->isEmpty()) {
-            return response()->json([
-                'data' => [],
-                'message' => 'no data'
-            ], Response::HTTP_OK);
-        }
-
-        return response()->json([
-            'data' => $categories,
-            'message' => 'data is retrieved successfully.'
-        ], Response::HTTP_OK);
-
+        return CustomResponse::ok(CategoryResource::collection($categories));
     }
 
     /**
@@ -47,27 +37,16 @@ class CategoryController extends Controller
      *
      * @param User $user
      * @param SearchRequest $request
-     * @return mixed
+     * @return CustomResponse
      */
     public function search(User $user, SearchRequest $request)
     {
-        $categories = Category::query()
-            ->where('user_id', '=', $user->id)
+        $categories = $user->categories()
             ->where('title', 'LIKE', '%' . $request->title . '%')
             ->orderBy('created_at')
             ->paginate(20);
 
-        if ($categories->isEmpty()) {
-            return response()->json([
-                'data' => [],
-                'message' => 'no data'
-            ], Response::HTTP_OK);
-        }
-
-        return response()->json([
-            'data' => $categories,
-            'message' => 'data is retrieved successfully.'
-        ], Response::HTTP_OK);
+        return CustomResponse::ok(CategoryResource::collection($categories));
     }
 
     /**
@@ -75,14 +54,11 @@ class CategoryController extends Controller
      *
      * @param User $user
      * @param Category $category
-     * @return mixed
+     * @return CustomResponse
      */
     public function show(User $user, Category $category)
     {
-        return response()->json([
-            'data' => $category,
-            'message' => 'data is retrieved successfully.'
-        ], Response::HTTP_OK);
+        return CustomResponse::ok(CategoryResource::make($category));
     }
 
     /**
@@ -90,7 +66,7 @@ class CategoryController extends Controller
      *
      * @param User $user
      * @param StoreRequest $request
-     * @return mixed
+     * @return CustomResponse
      */
     public function store(User $user, StoreRequest $request)
     {
@@ -98,46 +74,31 @@ class CategoryController extends Controller
             ->create($request->validated());
 
         if (!$category) {
-            return response()->json([
-                'data' => [],
-                'message' => 'An error occurred during process.'
-            ], Response::HTTP_OK);
+           CustomResponse::serverError();
         }
 
-        return response()->json([
-            'data' => $category,
-            'message' => 'Category created successfully.'
-        ], Response::HTTP_CREATED);
+        return CustomResponse::created(CategoryResource::make($category));
     }
 
     /**
      * This method updates a category.
      * @param User $user
      * @param UpdateRequest $request
-     * @return mixed
+     * @return CustomResponse
      */
     public function update(User $user, Category $category, UpdateRequest $request)
     {
         if ($category->user_id != $user->id) {
-            return response()->json([
-                'data' => [],
-                'message' => 'No access to this data.'
-            ], Response::HTTP_FORBIDDEN);
+            return CustomResponse::forbidden();
         }
 
         try {
             $category->update($request->validated());
         } catch (Throwable $exception) {
-            return response()->json([
-                'data' => [],
-                'message' => $exception->getMessage()
-            ], Response::HTTP_OK);
+            CustomResponse::serverError($exception);
         }
 
-        return response()->json([
-            'data' => $category,
-            'message' => 'Category updated successfully.'
-        ], Response::HTTP_OK);
+        return CustomResponse::ok(CategoryResource::make($category));
     }
 
     /**
@@ -145,22 +106,16 @@ class CategoryController extends Controller
      *
      * @param User $user
      * @param Category $category
-     * @return mixed
+     * @return CustomResponse
      */
     public function destroy(User $user, Category $category)
     {
         if ($category->user_id != $user->id) {
-            return response()->json([
-                'data' => [],
-                'message' => 'No access to this data.'
-            ], Response::HTTP_FORBIDDEN);
+            return CustomResponse::forbidden();
         }
 
         $category->delete();
 
-        return response()->json([
-            'data' => $category,
-            'message' => 'Category deleted successfully.'
-        ], Response::HTTP_NO_CONTENT);
+        return CustomResponse::noContent();
     }
 }
