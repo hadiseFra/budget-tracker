@@ -8,17 +8,14 @@ use App\Http\Requests\Category\User\Search as SearchRequest;
 use App\Http\Requests\Category\User\Store as StoreRequest;
 use App\Http\Requests\Category\User\Update as UpdateRequest;
 use App\Http\Resources\User\Category\CategoryResource;
+use App\Http\Responses\Response as CustomResponse;
 use App\Models\Category;
 use App\Models\User;
-use Illuminate\Http\Response;
-use App\Http\Responses\Response as CustomResponse;
 use Throwable;
 
 class CategoryController extends Controller
 {
     /**
-     * This method returns the list of categories belongs to a user.
-     *
      * @param User $user
      * @param IndexRequest $request
      * @return CustomResponse
@@ -33,8 +30,6 @@ class CategoryController extends Controller
     }
 
     /**
-     * This method searches in a user's categories.
-     *
      * @param User $user
      * @param SearchRequest $request
      * @return CustomResponse
@@ -50,8 +45,6 @@ class CategoryController extends Controller
     }
 
     /**
-     * This method returns a category belongs to a user.
-     *
      * @param User $user
      * @param Category $category
      * @return CustomResponse
@@ -62,26 +55,21 @@ class CategoryController extends Controller
     }
 
     /**
-     * This method stores a category.
-     *
      * @param User $user
      * @param StoreRequest $request
      * @return CustomResponse
      */
     public function store(User $user, StoreRequest $request)
     {
-        $category = Category::query()
-            ->create($request->validated());
-
-        if (!$category) {
-           CustomResponse::serverError();
+        try {
+            $category = $user->categories()->create($request->validated());
+            return CustomResponse::created(CategoryResource::make($category));
+        } catch (Throwable $e) {
+            return CustomResponse::serverError($e);
         }
-
-        return CustomResponse::created(CategoryResource::make($category));
     }
 
     /**
-     * This method updates a category.
      * @param User $user
      * @param UpdateRequest $request
      * @return CustomResponse
@@ -95,15 +83,13 @@ class CategoryController extends Controller
         try {
             $category->update($request->validated());
         } catch (Throwable $exception) {
-            CustomResponse::serverError($exception);
+            return CustomResponse::serverError($exception);
         }
 
         return CustomResponse::ok(CategoryResource::make($category));
     }
 
     /**
-     * This method destroys a category.
-     *
      * @param User $user
      * @param Category $category
      * @return CustomResponse
